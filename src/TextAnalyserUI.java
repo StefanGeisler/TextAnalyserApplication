@@ -1,12 +1,12 @@
 import javafx.application.Application;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
 
@@ -25,9 +25,12 @@ public class TextAnalyserUI extends Application {
     private TableView   lettersTable;
 
     private Button      buttonAnalyse;
+    private Button      buttonHelp;
 
-    private CheckBox    removeSpacesBox;
-    private ComboBox    alphabetComboBox;
+    private ToggleGroup         whitespaceGroup;
+    private ChoiceBox<String>   cipherSelectionBox;
+    private ComboBox<String>    keyComboBox;
+    private TextField           keyTextField;
 
 
     public Stage getPrimaryStage() {
@@ -58,14 +61,25 @@ public class TextAnalyserUI extends Application {
         return buttonAnalyse;
     }
 
-    public CheckBox getRemoveSpacesBox() {
-        return removeSpacesBox;
+    public Button getButtonHelp() {
+        return buttonHelp;
     }
 
-    public ComboBox getAlphabetComboBox() {
-        return alphabetComboBox;
+    public ToggleGroup getWhitespaceGroup() {
+        return whitespaceGroup;
     }
 
+    public ChoiceBox<String> getCipherSelectionBox() {
+        return cipherSelectionBox;
+    }
+
+    public ComboBox<String> getKeyComboBox() {
+        return keyComboBox;
+    }
+
+    public TextField getKeyTextField() {
+        return keyTextField;
+    }
 
     /**
      * Method creates menu for application.
@@ -118,17 +132,44 @@ public class TextAnalyserUI extends Application {
      */
     private FlowPane createEncryptPane() {
         // create FlowPane as container for the UI control elements
-        FlowPane encryptPane = new FlowPane(5,5);
-        encryptPane.setPadding(new Insets(5));
-        //encryptPane.setPrefWrapLength(170);
+        FlowPane encryptPane = new FlowPane();
 
-        //TODO: add ui elements
+        // create mutually exclusive Radio Buttons for "whitespace handling"
+        this.whitespaceGroup = new ToggleGroup();
+        RadioButton rbIgnore = new RadioButton("ignore whitespace");
+        rbIgnore.setToggleGroup(whitespaceGroup);
+        rbIgnore.setSelected(true);
+        RadioButton rbRemove = new RadioButton("remove whitespace");
+        rbRemove.setToggleGroup(whitespaceGroup);
+        VBox whitespaceVBox = new VBox(5, rbIgnore, rbRemove);
+        whitespaceVBox.setPadding(new Insets(5));
+        encryptPane.getChildren().add(whitespaceVBox);
 
-        //this.removeSpacesBox = new CheckBox("remove spaces");
-        //this.alphabetComboBox = createAlphabetBox();
-        //HBox alphabetHBox = new HBox(5, new Label("Key:"), alphabetComboBox);
+        VBox cipherVBox = new VBox(5);
+        cipherVBox.setPadding(new Insets(5));
+        encryptPane.getChildren().add(cipherVBox);
 
-        //encryptPane.getChildren().addAll(removeSpacesBox, alphabetHBox);
+        // create Choice Box for "cipher selection"
+        this.cipherSelectionBox = new ChoiceBox<>(FXCollections.observableArrayList(
+                "Shift Cipher", "Polyalphabetic Cipher")
+        );
+        cipherSelectionBox.setTooltip(new Tooltip("Select Cipher Method"));
+        cipherVBox.getChildren().add(cipherSelectionBox);
+
+        // shift cipher key settings (active, only after proper cipher selection)
+        this.keyComboBox = createKeySelectionBox();
+        HBox keyHBox = new HBox(5, new Label("Key:"), keyComboBox);
+        keyHBox.setDisable(true);
+        cipherVBox.getChildren().add(keyHBox);
+
+        // polyalphabetic cipher key settings (active, only after proper cipher selection)
+        this.keyTextField = new TextField();
+        keyTextField.setPromptText("Enter keyword");
+        keyTextField.setPrefColumnCount(10);
+        HBox keyWordHBox = new HBox(5, new Label("Key:"), keyTextField);
+        keyWordHBox.setDisable(true);
+        cipherVBox.getChildren().add(keyWordHBox);
+
         return encryptPane;
     }
 
@@ -139,28 +180,40 @@ public class TextAnalyserUI extends Application {
      */
     private FlowPane createDecryptPane() {
         // create FlowPane as container for the UI control elements
-        FlowPane decryptPane = new FlowPane(5,5);
-        decryptPane.setPadding(new Insets(5));
-        //decryptPane.setPrefWrapLength(170);
+        FlowPane decryptPane = new FlowPane();
 
         //TODO: add ui elements
 
-        //decryptPane.getChildren().addAll();
         return decryptPane;
     }
 
     /**
-     * Method creates a ComboBox with options A to Z.
+     * Method creates a ComboBox with key options A to Z.
      *
      * @return ComboBox node
      */
-    private ComboBox createAlphabetBox() {
+    private ComboBox<String> createKeySelectionBox() {
         ComboBox<String> comboBox = new ComboBox<>();
         char[] alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
         for (char c : alphabet) {
             comboBox.getItems().add("A -> " + c);
         }
         return comboBox;
+    }
+
+    /**
+     * Method creates a Button with "Help" icon.
+     *
+     * @return Button node
+     */
+    private Button createHelpButton() {
+        Image imageHelp = new Image(getClass().getResourceAsStream("Button-Help-icon.png"));
+        Button button = new Button();
+        ImageView imageView = new ImageView(imageHelp);
+        imageView.setFitHeight(22);
+        imageView.setFitWidth(22);
+        button.setGraphic(imageView);
+        return button;
     }
 
 
@@ -210,7 +263,6 @@ public class TextAnalyserUI extends Application {
         GridPane centerGrid = new GridPane();
         centerGrid.setVgap(8);
         centerGrid.setHgap(8);
-        //centerGrid.setPadding(new Insets(5));
         //centerGrid.setGridLinesVisible(true);
         root.setCenter(centerGrid);
 
@@ -226,15 +278,20 @@ public class TextAnalyserUI extends Application {
 
         // add control areas for "Encryption" and "Decryption"
         final Label encryptLabel = new Label("Encrypt:");
-        centerGrid.add(encryptLabel,0,2,1,1);
+        buttonHelp = createHelpButton();
+        Region emptyRegion = new Region();
+        HBox encryptHBox = new HBox(encryptLabel, emptyRegion, buttonHelp);
+        HBox.setHgrow(emptyRegion, Priority.ALWAYS);
+        centerGrid.add(encryptHBox,0,2,1,1);
         centerGrid.add(createEncryptPane(),0,3,1,1);
+
         final Label decryptLabel = new Label("Decrypt:");
         centerGrid.add(decryptLabel,2,2,1,1);
         centerGrid.add(createDecryptPane(),2,3,1,1);
 
 
         // set main scene
-        Scene mainScene = new Scene(root, 800, 600);
+        Scene mainScene = new Scene(root, 800, 640);
         primaryStage.setScene(mainScene);
         primaryStage.setTitle("Text Analyse Tool");
         primaryStage.show();

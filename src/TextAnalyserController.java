@@ -1,5 +1,6 @@
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
@@ -64,6 +65,20 @@ public class TextAnalyserController {
         });
         ui.getTextArea().setOnDragOver(new DragOverHandler());
         ui.getTextArea().setOnDragDropped(new DragDroppedHandler());
+
+        // add Listener for cipher selection
+        ui.getCipherSelectionBox().getSelectionModel().selectedIndexProperty().addListener(
+                (ObservableValue<? extends Number> ov, Number oldVal, Number newVal) -> {
+                    switch (newVal.intValue()) {
+                        case 0: ui.getKeyComboBox().getParent().setDisable(false);
+                                ui.getKeyTextField().getParent().setDisable(true);
+                                break;
+                        case 1: ui.getKeyTextField().getParent().setDisable(false);
+                                ui.getKeyComboBox().getParent().setDisable(true);
+                                break;
+                    }
+                }
+        );
 
         // bind text area to StringProperty
         originalText.bindBidirectional(ui.getTextArea().textProperty());
