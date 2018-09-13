@@ -29,4 +29,19 @@ public class Cryptography {
         }
         return result;
     }
+
+    /**
+     * Static method provides an information text about Cipher Methods for the user.
+     *
+     * @return Information text.
+     */
+    public static String getInformationText() {
+        String info =
+                "Shift Cipher:\n" +
+                        "(Also known as Caesar's cipher) The shift cipher is one of the simplest and most widely known encryption techniques. It is a type of substitution cipher in which each letter in the plaintext is replaced by a letter some fixed number of positions down the alphabet.\n\n" +
+                "Polialphabetic Cipher:\n" +
+                        "(Also known as Vigenère cipher) A method of encrypting alphabetic text by using a series of interwoven Caesar ciphers, based on the letters of a keyword. It is a form of polyalphabetic substitution.";
+
+        return info;
+    }
 }

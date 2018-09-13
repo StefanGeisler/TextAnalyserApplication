@@ -6,7 +6,9 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.*;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 
@@ -20,6 +22,8 @@ public class TextAnalyserUI extends Application {
     private MenuItem    itemOpen;
     private MenuItem    itemSave;
     private MenuItem    itemClear;
+    private MenuItem    itemResize;
+    private MenuItem    itemAbout;
 
     private TextArea    textArea;
     private TableView   lettersTable;
@@ -57,6 +61,14 @@ public class TextAnalyserUI extends Application {
         return itemClear;
     }
 
+    public MenuItem getItemResize() {
+        return itemResize;
+    }
+
+    public MenuItem getItemAbout() {
+        return itemAbout;
+    }
+
     public Button getButtonAnalyse() {
         return buttonAnalyse;
     }
@@ -90,16 +102,28 @@ public class TextAnalyserUI extends Application {
         MenuBar menuBar = new MenuBar();
 
         // super-menu
-        Menu menuFile = new Menu("File");
-        Menu menuOptions = new Menu("Options");
+        Menu menuFile = new Menu("_File");
+        Menu menuOptions = new Menu("_Options");
+        Menu menuView = new Menu("_View");
+        Menu menuHelp = new Menu("_Help");
 
         // sub-menus
-        itemOpen = new MenuItem("open");
-        itemSave = new MenuItem("save");
-        itemClear = new MenuItem("clear");
+        itemOpen = new MenuItem("Open");
+        itemSave = new MenuItem("Save");
+        itemClear = new MenuItem("Clear");
         menuFile.getItems().addAll(itemOpen, itemSave, itemClear);
+        itemResize = new MenuItem("Resize");
+        menuView.getItems().addAll(itemResize);
+        itemAbout = new MenuItem("About");
+        menuHelp.getItems().addAll(itemAbout);
 
-        menuBar.getMenus().addAll(menuFile,menuOptions);
+        // add shortcuts
+        itemOpen.setAccelerator(KeyCombination.keyCombination("Ctrl+O"));
+        itemSave.setAccelerator(KeyCombination.keyCombination("Ctrl+S"));
+        itemClear.setAccelerator(KeyCombination.keyCombination("Ctrl+X"));
+
+        itemSave.setDisable(true);  // enable only after modification have been done
+        menuBar.getMenus().addAll(menuFile, menuView, menuOptions, menuHelp);
         return menuBar;
     }
 
@@ -113,6 +137,7 @@ public class TextAnalyserUI extends Application {
         // create TabPane
         TabPane tabPane = new TabPane();
         Tab mainTab = new Tab("Original");
+        mainTab.setClosable(false);
         Tab secondaryTab = new Tab("Modified");
         tabPane.getTabs().addAll(mainTab, secondaryTab);
 
@@ -207,13 +232,52 @@ public class TextAnalyserUI extends Application {
      * @return Button node
      */
     private Button createHelpButton() {
-        Image imageHelp = new Image(getClass().getResourceAsStream("Button-Help-icon.png"));
+        Image imageHelp = new Image(getClass().getResourceAsStream("Media/Button-Help-Icon.png"));
         Button button = new Button();
         ImageView imageView = new ImageView(imageHelp);
         imageView.setFitHeight(22);
         imageView.setFitWidth(22);
         button.setGraphic(imageView);
         return button;
+    }
+
+    /**
+     * Method shows a new window with information about cipher methods for the user.
+     */
+    public void showHelp() {
+        // provide basic information text
+        Text helpText = new Text(Cryptography.getInformationText());
+        helpText.setWrappingWidth(300);
+
+        VBox helpVBox = new VBox(new Label("Cipher Methods") ,helpText);
+        helpVBox.setSpacing(15);
+        helpVBox.setPadding(new Insets(10));
+
+        // provide hyperlinks to wikipedia
+        final Hyperlink hyperlinkCaesar = new Hyperlink("Wikipedia: Caesar Cipher");
+        hyperlinkCaesar.setOnAction(t ->
+                this.getHostServices().showDocument("https://en.wikipedia.org/wiki/Caesar_cipher")
+        );
+        final Hyperlink hyperlinkVigenere = new Hyperlink("Wikipedia: Vigenère Cipher");
+        hyperlinkCaesar.setOnAction(t ->
+                this.getHostServices().showDocument("https://en.wikipedia.org/wiki/Vigenère_cipher")
+        );
+
+        VBox linkVBox = new VBox(new Label("See"), hyperlinkCaesar, hyperlinkVigenere);
+        linkVBox.setSpacing(10);
+        linkVBox.setPadding(new Insets(10));
+        linkVBox.setStyle("-fx-background-color:LIGHTGREY;");
+
+        BorderPane root = new BorderPane();
+        root.setCenter(helpVBox);
+        root.setRight(linkVBox);
+
+        // show in an new window
+        Stage helpStage = new Stage();
+        helpStage.setTitle("Help");
+        helpStage.setScene(new Scene(root, 550, 400));
+        helpStage.setResizable(false);
+        helpStage.show();
     }
 
 
@@ -253,7 +317,7 @@ public class TextAnalyserUI extends Application {
         leftVBox.getChildren().add(lettersTable);
 
         // add button
-        buttonAnalyse = new Button("Analyse Text");
+        buttonAnalyse = new Button("_Analyse Text");
         buttonAnalyse.setMaxWidth(Double.MAX_VALUE);
         leftVBox.getChildren().add(buttonAnalyse);
 
@@ -291,14 +355,12 @@ public class TextAnalyserUI extends Application {
 
 
         // set main scene
-        Scene mainScene = new Scene(root, 800, 640);
+        Scene mainScene = new Scene(root, 800, 680);
         primaryStage.setScene(mainScene);
         primaryStage.setTitle("Text Analyse Tool");
         primaryStage.show();
 
         // initialize controller
         new TextAnalyserController(this);
-
     }
-
 }
