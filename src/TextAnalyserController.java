@@ -7,6 +7,7 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.SelectionModel;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -27,8 +28,9 @@ public class TextAnalyserController {
 
     private final TextAnalyserUI ui;
 
-    private StringProperty originalText;            // the text written or loaded by the user
-    private StringProperty modifiedText;            // the text after modification (e.g. encrypting/decrypting)
+    private StringProperty originalText;            // the text written in the text area or imported by the user
+    private StringProperty cipherText;              // the text after applying encryption method
+    private StringProperty planeText;               // the text after applying decryption method
 
     private ObservableList<FrequencyModel> data;    // data model for the TableView binding
 
@@ -41,7 +43,8 @@ public class TextAnalyserController {
     public TextAnalyserController(TextAnalyserUI ui) {
         this.ui = ui;
         this.originalText = new SimpleStringProperty();
-        this.modifiedText = new SimpleStringProperty();
+        this.cipherText = new SimpleStringProperty();
+        this.planeText = new SimpleStringProperty();
         this.data = FXCollections.observableArrayList();
 
         // set EventHandlers
@@ -59,15 +62,24 @@ public class TextAnalyserController {
 
         ui.getButtonAnalyse().setOnAction(new AnalyseHandler());
         ui.getButtonHelp().setOnAction((ActionEvent event) ->
-                ui.showHelp()
+                ui.getHelpStage().show()
         );
+        ui.getButtonSettings().setOnAction((ActionEvent event) ->
+                ui.getSettingsStage().show()
+        );
+        ui.getButtonEncrypt().setOnAction(new EncryptHandler());
 
         ui.getTextArea().setOnDragEntered(new DragEnteredHandler());
         ui.getTextArea().setOnDragExited((DragEvent event) ->
-                ui.getTextArea().setStyle("-fx-background-color:LIGHTGREY;")
+                ui.getTextArea().setStyle("-fx-border-color:transparent;")
         );
         ui.getTextArea().setOnDragOver(new DragOverHandler());
         ui.getTextArea().setOnDragDropped(new DragDroppedHandler());
+
+        // add BooleanBinding between originalText (text area) and the "encrypt/decrypt buttons"
+        // enables the buttons only if text has been entered or imported
+        ui.getButtonEncrypt().disableProperty().bind(originalText.isEmpty());
+        ui.getButtonDecrypt().disableProperty().bind(originalText.isEmpty());
 
         // add Listener for cipher selection
         ui.getCipherSelectionBox().getSelectionModel().selectedIndexProperty().addListener(
@@ -172,7 +184,7 @@ public class TextAnalyserController {
             File outputFile = fileChooser.showSaveDialog(ui.getPrimaryStage());
             // save "modified text" to specified file
             if (outputFile != null) {
-                TextAnalyserIO.saveFile(modifiedText.get(), outputFile);
+                TextAnalyserIO.saveFile(cipherText.get(), outputFile);
             }
         }
     }
@@ -186,21 +198,21 @@ public class TextAnalyserController {
         public void handle(DragEvent event) {
             TextArea target = ui.getTextArea();
             Dragboard db = event.getDragboard();
-            String color = "-fx-background-color:RED";
+            String color = "-fx-border-color:RED";
 
             // don't allow multiple files to be dragged
             if (db.hasFiles() && db.getFiles().size() == 1) {
                 try {
                     // check if text can be read from the dragged file
                     if (TextAnalyserIO.fileContainsText(db.getFiles().get(0))) {
-                        color = "-fx-background-color:LIGHTGREEN";
+                        color = "-fx-border-color:LIGHTGREEN";
                     }
                 } catch (IOException e) {
                     // no handling needed
                 }
             // also allow direct text dragging
             } else if (db.hasString() && !db.hasFiles()) {
-                color = "-fx-background-color:LIGHTGREEN";
+                color = "-fx-border-color:LIGHTGREEN";
             }
             target.setStyle(color);
         }
@@ -275,6 +287,54 @@ public class TextAnalyserController {
             }
             // update TableView
             data.setAll(frequencyList);
+        }
+    }
+
+    /**
+     * Inner Class for ActionEvent "encrypt-button-pressed"
+     */
+    private class EncryptHandler implements EventHandler<ActionEvent> {
+        @Override
+        public void handle(ActionEvent event) {
+            // check if all selection options have been made and give visual highlight to missing options
+            SelectionModel selectionModel = ui.getCipherSelectionBox().getSelectionModel();
+            if (selectionModel.isEmpty()) {
+                ui.getCipherSelectionBox().setStyle("-fx-border-color:RED");
+                return;
+            } else {
+                ui.getCipherSelectionBox().setStyle("-fx-border-color:transparent");
+            }
+            if (ui.getKeyComboBox().isDisabled()) {
+                if (ui.getKeyTextField().getText().isEmpty()) {
+                    ui.getKeyTextField().setStyle("-fx-border-color:RED");
+                    return;
+                }
+                ui.getKeyTextField().setStyle("-fx-border-color:transparent");
+
+            } else {
+                if (ui.getKeyComboBox().getSelectionModel().isEmpty()) {
+                    ui.getKeyComboBox().setStyle("-fx-border-color:RED");
+                    return;
+                }
+                ui.getKeyComboBox().setStyle("-fx-border-color:transparent");
+            }
+
+            if (!originalText.get().isEmpty()) {
+                // convert to upper case, remove whitespace and non-alphanumeric characters if option is enabled
+                String modifiedText = originalText.get().toUpperCase();
+                boolean removeWhitespace = ui.getWhitespaceToggleGroup().getSelectedToggle().getUserData().equals("remove");
+                if (removeWhitespace) {
+                    modifiedText = modifiedText.replaceAll("[\\s]", "");
+                }
+                boolean removePunctuation = ui.getPunctuationToggleGroup().getSelectedToggle().getUserData().equals("remove");
+                if (removePunctuation) {
+                    modifiedText = modifiedText.replaceAll("[\\p{Punct}]", "");
+                }
+
+
+                System.out.println(selectionModel.getSelectedItem());
+                System.out.println(modifiedText);
+            }
         }
     }
 

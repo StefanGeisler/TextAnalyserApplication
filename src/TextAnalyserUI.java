@@ -18,6 +18,8 @@ import javafx.stage.Stage;
 public class TextAnalyserUI extends Application {
 
     private Stage       primaryStage;
+    private Stage       helpStage;
+    private Stage       settingsStage;
 
     private MenuItem    itemOpen;
     private MenuItem    itemSave;
@@ -30,15 +32,30 @@ public class TextAnalyserUI extends Application {
 
     private Button      buttonAnalyse;
     private Button      buttonHelp;
+    private Button      buttonEncrypt;
+    private Button      buttonSettings;
+    private Button      buttonDecrypt;
 
-    private ToggleGroup         whitespaceGroup;
+    private ToggleGroup         whitespaceToggleGroup;
+    private ToggleGroup         punctuationToggleGroup;
     private ChoiceBox<String>   cipherSelectionBox;
     private ComboBox<String>    keyComboBox;
     private TextField           keyTextField;
 
+    public TextAnalyserUI() {
+
+    }
 
     public Stage getPrimaryStage() {
         return primaryStage;
+    }
+
+    public Stage getHelpStage() {
+        return helpStage;
+    }
+
+    public Stage getSettingsStage() {
+        return settingsStage;
     }
 
     public TextArea getTextArea() {
@@ -77,8 +94,24 @@ public class TextAnalyserUI extends Application {
         return buttonHelp;
     }
 
-    public ToggleGroup getWhitespaceGroup() {
-        return whitespaceGroup;
+    public Button getButtonEncrypt() {
+        return buttonEncrypt;
+    }
+
+    public Button getButtonSettings() {
+        return buttonSettings;
+    }
+
+    public Button getButtonDecrypt() {
+        return buttonDecrypt;
+    }
+
+    public ToggleGroup getWhitespaceToggleGroup() {
+        return whitespaceToggleGroup;
+    }
+
+    public ToggleGroup getPunctuationToggleGroup() {
+        return punctuationToggleGroup;
     }
 
     public ChoiceBox<String> getCipherSelectionBox() {
@@ -128,7 +161,7 @@ public class TextAnalyserUI extends Application {
     }
 
     /**
-     * Method creates a TabPane with two tabs for the UI.
+     * Method creates a TabPane with three tabs for the UI.
      * Primary tab holds a text area.
      *
      * @return TabPane node
@@ -138,8 +171,13 @@ public class TextAnalyserUI extends Application {
         TabPane tabPane = new TabPane();
         Tab mainTab = new Tab("Original");
         mainTab.setClosable(false);
-        Tab secondaryTab = new Tab("Modified");
-        tabPane.getTabs().addAll(mainTab, secondaryTab);
+        Tab cipherTab = new Tab("Cipher Text");
+        cipherTab.setClosable(false);
+        cipherTab.setDisable(true);
+        Tab planeTab = new Tab("Plane Text");
+        planeTab.setClosable(false);
+        planeTab.setDisable(true);
+        tabPane.getTabs().addAll(mainTab, cipherTab, planeTab);
 
         // create TextArea
         this.textArea = new TextArea();
@@ -151,6 +189,40 @@ public class TextAnalyserUI extends Application {
     }
 
     /**
+     * Method creates a HBox for the encryption Label and Buttons.
+     *
+     * @return HBox node
+     */
+    private HBox createEncryptHBox() {
+        final Label encryptLabel = new Label("Encrypt:");
+        buttonEncrypt = createIconButton("Media/Button-Lock-Icon.png");
+        buttonEncrypt.setTooltip(new Tooltip("Encrypt plane text to cipher text"));
+        buttonSettings = createIconButton("Media/Button-Settings-Icon.png");
+        buttonSettings.setTooltip(new Tooltip("Settings"));
+        buttonHelp = createIconButton("Media/Button-Info-Icon.png");
+        buttonHelp.setTooltip(new Tooltip("Info"));
+        Region emptyRegion = new Region();
+        HBox encryptHBox = new HBox(encryptLabel, emptyRegion, buttonEncrypt, buttonSettings, buttonHelp);
+        HBox.setHgrow(emptyRegion, Priority.ALWAYS);
+        return encryptHBox;
+    }
+
+    /**
+     * Method creates a HBox for the decryption Label and Buttons.
+     *
+     * @return HBox node
+     */
+    private HBox createDecryptHBox() {
+        final Label decryptLabel = new Label("Decrypt:");
+        buttonDecrypt = createIconButton("Media/Button-Key-Icon.png");
+        buttonDecrypt.setTooltip(new Tooltip("Decrypt cipher text"));
+        Region emptyRegion = new Region();
+        HBox decryptHBox = new HBox(decryptLabel, emptyRegion, buttonDecrypt);
+        HBox.setHgrow(emptyRegion, Priority.ALWAYS);
+        return decryptHBox;
+    }
+
+    /**
      * Method creates a FlowPane with the UI controls for encryption.
      *
      * @return FlowPane node
@@ -158,17 +230,6 @@ public class TextAnalyserUI extends Application {
     private FlowPane createEncryptPane() {
         // create FlowPane as container for the UI control elements
         FlowPane encryptPane = new FlowPane();
-
-        // create mutually exclusive Radio Buttons for "whitespace handling"
-        this.whitespaceGroup = new ToggleGroup();
-        RadioButton rbIgnore = new RadioButton("ignore whitespace");
-        rbIgnore.setToggleGroup(whitespaceGroup);
-        rbIgnore.setSelected(true);
-        RadioButton rbRemove = new RadioButton("remove whitespace");
-        rbRemove.setToggleGroup(whitespaceGroup);
-        VBox whitespaceVBox = new VBox(5, rbIgnore, rbRemove);
-        whitespaceVBox.setPadding(new Insets(5));
-        encryptPane.getChildren().add(whitespaceVBox);
 
         VBox cipherVBox = new VBox(5);
         cipherVBox.setPadding(new Insets(5));
@@ -227,24 +288,27 @@ public class TextAnalyserUI extends Application {
     }
 
     /**
-     * Method creates a Button with "Help" icon.
+     * Method creates a Button with an icon from a png file.
+     *
+     * @param resourceName name of the desired resource (See java.io.InputStream.getResourceAsStream)
      *
      * @return Button node
      */
-    private Button createHelpButton() {
-        Image imageHelp = new Image(getClass().getResourceAsStream("Media/Button-Help-Icon.png"));
+    private Button createIconButton(String resourceName) {
+        Image image = new Image(getClass().getResourceAsStream(resourceName));
         Button button = new Button();
-        ImageView imageView = new ImageView(imageHelp);
-        imageView.setFitHeight(22);
-        imageView.setFitWidth(22);
+        ImageView imageView = new ImageView(image);
+        imageView.setFitHeight(24);
+        imageView.setFitWidth(24);
         button.setGraphic(imageView);
         return button;
     }
 
     /**
-     * Method shows a new window with information about cipher methods for the user.
+     * Method initializes a stage with information about cipher methods.
+     * The stage will be displayed when the user presses the "Help Button".
      */
-    public void showHelp() {
+    public void initHelpStage() {
         // provide basic information text
         Text helpText = new Text(Cryptography.getInformationText());
         helpText.setWrappingWidth(300);
@@ -273,11 +337,62 @@ public class TextAnalyserUI extends Application {
         root.setRight(linkVBox);
 
         // show in an new window
-        Stage helpStage = new Stage();
+        this.helpStage = new Stage();
         helpStage.setTitle("Help");
         helpStage.setScene(new Scene(root, 550, 400));
         helpStage.setResizable(false);
-        helpStage.show();
+    }
+
+    /**
+     * Method initializes a stage with options for encryption.
+     * The stage will be displayed when the user presses the "Settings Button".
+     */
+    public void initSettingsStage() {
+        GridPane gridPane = new GridPane();
+
+        // create a tree view for character handling settings
+        TreeItem characterHandlingRoot = new TreeItem("Character Handling");
+        ImageView charIcon = new ImageView(
+                new Image(getClass().getResourceAsStream("Media/Option-Character-Icon.png"))
+        );
+        charIcon.setFitWidth(22);
+        charIcon.setFitHeight(22);
+        characterHandlingRoot.setGraphic(charIcon);
+        characterHandlingRoot.setExpanded(true);
+        TreeView<String> characterTree = new TreeView(characterHandlingRoot);
+        gridPane.add(characterTree, 0,0);
+
+        // create mutually exclusive radio buttons for "whitespace handling"
+        this.whitespaceToggleGroup = new ToggleGroup();
+        RadioButton rbIgnoreWhitespace = new RadioButton("ignore whitespace");
+        rbIgnoreWhitespace.setUserData("ignore");
+        rbIgnoreWhitespace.setToggleGroup(whitespaceToggleGroup);
+        rbIgnoreWhitespace.setSelected(true);
+        RadioButton rbRemoveWhitespace = new RadioButton("remove whitespace");
+        rbRemoveWhitespace.setUserData("remove");
+        rbRemoveWhitespace.setToggleGroup(whitespaceToggleGroup);
+        TreeItem whitespaceItem = new TreeItem("Whitespace");
+        whitespaceItem.getChildren().addAll(new TreeItem<>(rbIgnoreWhitespace), new TreeItem<>(rbRemoveWhitespace));
+        characterHandlingRoot.getChildren().add(whitespaceItem);
+
+        // create mutually exclusive radio buttons for "punctuation character handling"
+        this.punctuationToggleGroup = new ToggleGroup();
+        RadioButton rbIgnorePunctuation = new RadioButton("ignore punctuation");
+        rbIgnorePunctuation.setUserData("ignore");
+        rbIgnorePunctuation.setToggleGroup(punctuationToggleGroup);
+        rbIgnorePunctuation.setSelected(true);
+        RadioButton rbRemovePunctuation = new RadioButton("remove punctuation");
+        rbRemovePunctuation.setUserData("remove");
+        rbRemovePunctuation.setToggleGroup(punctuationToggleGroup);
+        TreeItem punctuationItem = new TreeItem("Punctuation");
+        punctuationItem.getChildren().addAll(new TreeItem<>(rbIgnorePunctuation), new TreeItem<>(rbRemovePunctuation));
+        characterHandlingRoot.getChildren().add(punctuationItem);
+
+        // show in a new window
+        this.settingsStage = new Stage();
+        settingsStage.setTitle("Settings");
+        settingsStage.setScene(new Scene(gridPane));
+        settingsStage.setResizable(false);
     }
 
 
@@ -327,10 +442,9 @@ public class TextAnalyserUI extends Application {
         GridPane centerGrid = new GridPane();
         centerGrid.setVgap(8);
         centerGrid.setHgap(8);
-        //centerGrid.setGridLinesVisible(true);
         root.setCenter(centerGrid);
 
-        // add TabPane with two tabs and TextArea
+        // add TabPane with three tabs and TextArea
         TabPane tabPane = createTabPane();
         centerGrid.add(tabPane,0,0,3,1);
 
@@ -341,21 +455,18 @@ public class TextAnalyserUI extends Application {
         centerGrid.add(vSeparator,1,2,1,2);
 
         // add control areas for "Encryption" and "Decryption"
-        final Label encryptLabel = new Label("Encrypt:");
-        buttonHelp = createHelpButton();
-        Region emptyRegion = new Region();
-        HBox encryptHBox = new HBox(encryptLabel, emptyRegion, buttonHelp);
-        HBox.setHgrow(emptyRegion, Priority.ALWAYS);
-        centerGrid.add(encryptHBox,0,2,1,1);
+        centerGrid.add(createEncryptHBox(),0,2,1,1);
         centerGrid.add(createEncryptPane(),0,3,1,1);
 
-        final Label decryptLabel = new Label("Decrypt:");
-        centerGrid.add(decryptLabel,2,2,1,1);
+        centerGrid.add(createDecryptHBox(),2,2,1,1);
         centerGrid.add(createDecryptPane(),2,3,1,1);
 
+        // initialize other stages (will be shown, when the user interacts with the corresponding UI element)
+        initHelpStage();
+        initSettingsStage();
 
         // set main scene
-        Scene mainScene = new Scene(root, 800, 680);
+        Scene mainScene = new Scene(root, 800, 650);
         primaryStage.setScene(mainScene);
         primaryStage.setTitle("Text Analyse Tool");
         primaryStage.show();
