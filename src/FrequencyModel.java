@@ -4,7 +4,7 @@ import javafx.beans.property.SimpleStringProperty;
 /**
  * Class provides the data model for the TableView of the Text Analyser Application.
  */
-class FrequencyModel {
+public class FrequencyModel {
     private final SimpleStringProperty letter;
     private final SimpleIntegerProperty frequency;
 
