@@ -10,6 +10,6 @@ Goals to implement:
 
 +Frequency-analysis
 
-+Substitution Cipher (Ceasar Cipher and Vigenèr Cipher)
++Substitution Cipher (Caesar Cipher and Vigenèr Cipher)
 
 +Decryption tools

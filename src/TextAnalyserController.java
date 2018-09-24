@@ -7,11 +7,13 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.SelectionModel;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.*;
 import javafx.stage.FileChooser;
+import javafx.stage.WindowEvent;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,8 +29,9 @@ public class TextAnalyserController {
 
     private final TextAnalyserUI ui;
 
-    private StringProperty originalText;            // the text written or loaded by the user
-    private StringProperty modifiedText;            // the text after modification (e.g. encrypting/decrypting)
+    private StringProperty originalText;            // the text written in the text area or imported by the user
+    private StringProperty cipherText;              // the text after applying encryption method
+    private StringProperty planeText;               // the text after applying decryption method
 
     private ObservableList<FrequencyModel> data;    // data model for the TableView binding
 
@@ -41,14 +44,18 @@ public class TextAnalyserController {
     public TextAnalyserController(TextAnalyserUI ui) {
         this.ui = ui;
         this.originalText = new SimpleStringProperty();
-        this.modifiedText = new SimpleStringProperty();
+        this.cipherText = new SimpleStringProperty();
+        this.planeText = new SimpleStringProperty();
         this.data = FXCollections.observableArrayList();
 
-        // set EventHandlers
+        /* set EventHandlers */
+
         ui.getItemOpen().setOnAction(new OpenHandler());
         ui.getItemSave().setOnAction(new SaveHandler());
         ui.getItemClear().setOnAction((ActionEvent event) -> {
-                ui.getTextArea().clear();
+                ui.getOriginalTextArea().clear();
+                ui.getCipherTextArea().clear();
+                ui.getPlaneTextArea().clear();
                 data.clear();
         });
 
@@ -57,17 +64,41 @@ public class TextAnalyserController {
                 ui.getPrimaryStage().setHeight(680);
         });
 
+        ui.getPrimaryStage().setOnCloseRequest((WindowEvent event) -> {
+                // close all other application windows before exit
+                ui.getSettingsStage().close();
+                ui.getHelpStage().close();
+        });
+
         ui.getButtonAnalyse().setOnAction(new AnalyseHandler());
         ui.getButtonHelp().setOnAction((ActionEvent event) ->
-                ui.showHelp()
+                ui.getHelpStage().show()
         );
+        ui.getButtonSettings().setOnAction((ActionEvent event) ->
+                ui.getSettingsStage().show()
+        );
+        ui.getButtonEncrypt().setOnAction(new EncryptHandler());
 
-        ui.getTextArea().setOnDragEntered(new DragEnteredHandler());
-        ui.getTextArea().setOnDragExited((DragEvent event) ->
-                ui.getTextArea().setStyle("-fx-background-color:LIGHTGREY;")
+        ui.getOriginalTextArea().setOnDragEntered(new DragEnteredHandler());
+        ui.getOriginalTextArea().setOnDragExited((DragEvent event) ->
+                ui.getOriginalTextArea().setStyle("-fx-border-color:transparent;")
         );
-        ui.getTextArea().setOnDragOver(new DragOverHandler());
-        ui.getTextArea().setOnDragDropped(new DragDroppedHandler());
+        ui.getOriginalTextArea().setOnDragOver(new DragOverHandler());
+        ui.getOriginalTextArea().setOnDragDropped(new DragDroppedHandler());
+
+        /* add BooleanBindings between StringProperties and UI elements */
+
+        // enables the "encrypt/decrypt buttons" only if text has been entered or imported
+        ui.getButtonEncrypt().disableProperty().bind(originalText.isEmpty());
+        ui.getButtonDecrypt().disableProperty().bind(originalText.isEmpty());
+
+        // enables safe option and "cipher text tab" only if text has been encrypted
+        ui.getItemSave().disableProperty().bind(cipherText.isEmpty());
+        ui.getCipherTab().disableProperty().bind(cipherText.isEmpty());
+
+        // enables "plane text tab" only if text has been decrypted
+        ui.getPlaneTab().disableProperty().bind(planeText.isEmpty());
+
 
         // add Listener for cipher selection
         ui.getCipherSelectionBox().getSelectionModel().selectedIndexProperty().addListener(
@@ -85,11 +116,13 @@ public class TextAnalyserController {
                 }
         );
 
+        // bind text areas to StringProperty
+        originalText.bindBidirectional(ui.getOriginalTextArea().textProperty());
+        cipherText.bindBidirectional(ui.getCipherTextArea().textProperty());
+        planeText.bindBidirectional(ui.getPlaneTextArea().textProperty());
+
         // initialize keyboard shortcuts
         initializeShortcuts(ui.getPrimaryStage().getScene());
-
-        // bind text area to StringProperty
-        originalText.bindBidirectional(ui.getTextArea().textProperty());
 
         // initialize TableView
         initializeLettersTable();
@@ -172,7 +205,7 @@ public class TextAnalyserController {
             File outputFile = fileChooser.showSaveDialog(ui.getPrimaryStage());
             // save "modified text" to specified file
             if (outputFile != null) {
-                TextAnalyserIO.saveFile(modifiedText.get(), outputFile);
+                TextAnalyserIO.saveFile(cipherText.get(), outputFile);
             }
         }
     }
@@ -184,23 +217,23 @@ public class TextAnalyserController {
     private class DragEnteredHandler implements EventHandler<DragEvent> {
         @Override
         public void handle(DragEvent event) {
-            TextArea target = ui.getTextArea();
+            TextArea target = ui.getOriginalTextArea();
             Dragboard db = event.getDragboard();
-            String color = "-fx-background-color:RED";
+            String color = "-fx-border-color:RED";
 
             // don't allow multiple files to be dragged
             if (db.hasFiles() && db.getFiles().size() == 1) {
                 try {
                     // check if text can be read from the dragged file
                     if (TextAnalyserIO.fileContainsText(db.getFiles().get(0))) {
-                        color = "-fx-background-color:LIGHTGREEN";
+                        color = "-fx-border-color:LIGHTGREEN";
                     }
                 } catch (IOException e) {
                     // no handling needed
                 }
             // also allow direct text dragging
             } else if (db.hasString() && !db.hasFiles()) {
-                color = "-fx-background-color:LIGHTGREEN";
+                color = "-fx-border-color:LIGHTGREEN";
             }
             target.setStyle(color);
         }
@@ -229,7 +262,7 @@ public class TextAnalyserController {
         @Override
         public void handle(DragEvent event) {
             /* data dropped */
-            TextArea target = ui.getTextArea();
+            TextArea target = ui.getOriginalTextArea();
             Dragboard db = event.getDragboard();
             boolean success = false;
 
@@ -261,7 +294,7 @@ public class TextAnalyserController {
     private class AnalyseHandler implements EventHandler<ActionEvent> {
         @Override
         public void handle(ActionEvent event) {
-            if (originalText == null) {
+            if (originalText.getValueSafe().isEmpty()) {
                 return;
             }
             // do frequency analysis
@@ -275,6 +308,79 @@ public class TextAnalyserController {
             }
             // update TableView
             data.setAll(frequencyList);
+        }
+    }
+
+    /**
+     * Inner Class for ActionEvent "encrypt-button-pressed"
+     */
+    private class EncryptHandler implements EventHandler<ActionEvent> {
+        @Override
+        public void handle(ActionEvent event) {
+            // check if all selection options have been made and give visual highlight to missing options
+            SelectionModel<String> selectionModel = ui.getCipherSelectionBox().getSelectionModel();
+            if (selectionModel.isEmpty()) {
+                ui.getCipherSelectionBox().setStyle("-fx-border-color:RED");
+                return;
+            } else {
+                ui.getCipherSelectionBox().setStyle("-fx-border-color:transparent");
+            }
+            if (ui.getKeyComboBox().isDisabled()) {
+                if (ui.getKeyTextField().getText().isEmpty()) {
+                    ui.getKeyTextField().setStyle("-fx-border-color:RED");
+                    return;
+                }
+                ui.getKeyTextField().setStyle("-fx-border-color:transparent");
+
+            } else {
+                if (ui.getKeyComboBox().getSelectionModel().isEmpty()) {
+                    ui.getKeyComboBox().setStyle("-fx-border-color:RED");
+                    return;
+                }
+                ui.getKeyComboBox().setStyle("-fx-border-color:transparent");
+            }
+
+            if (!originalText.getValueSafe().isEmpty()) {
+                // convert to upper case, remove whitespace, punctuation and non-alphanumeric characters if options are enabled
+                // originalText -> modifiedText -> cipherText
+                String modifiedText = originalText.get();
+                boolean removeWhitespace = ui.getWhitespaceToggleGroup().getSelectedToggle().getUserData().equals("remove");
+                if (removeWhitespace) {
+                    modifiedText = modifiedText.replaceAll("[\\s]", "");
+                }
+                boolean removePunctuation = ui.getPunctuationToggleGroup().getSelectedToggle().getUserData().equals("remove");
+                if (removePunctuation) {
+                    modifiedText = modifiedText.replaceAll("[\\p{Punct}]", "");
+                }
+                boolean onlyAlphaNumeric = ui.getAlphaNumericCheckBox().isSelected();
+                if (onlyAlphaNumeric) {
+                    modifiedText = modifiedText.replaceAll("[^\\p{Alnum}]", "");
+                }
+                boolean toUpperCase = ui.getCaseToggleGroup().getSelectedToggle().getUserData().equals("convert");
+                if (toUpperCase) {
+                    modifiedText = modifiedText.toUpperCase();
+                }
+
+                // do encryption
+                String cipher = selectionModel.getSelectedItem();
+                switch (cipher) {
+                    case "Shift Cipher":
+                        int shift = ui.getKeyComboBox().getSelectionModel().getSelectedIndex();
+                        System.out.println("caesar [shift: " + shift + "]");
+                        cipherText.setValue(Cryptography.shiftCipher(shift, modifiedText));
+                        break;
+                    case "Polyalphabetic Cipher":
+                        String keyword = ui.getKeyTextField().getText().toUpperCase();
+                        keyword = keyword.replaceAll("[^A-Z]" , ""); // allow only latin letters in keyword
+                        System.out.println("vigenere [keyword: " + keyword + "]");
+                        try {
+                            cipherText.setValue(Cryptography.polyalphabeticCipher(keyword, modifiedText));
+                        } catch (IllegalArgumentException e) {
+                            showAlert(e);
+                        }
+                        break;
+                }
+            }
         }
     }
 

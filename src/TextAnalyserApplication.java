@@ -3,7 +3,7 @@
  *      An application for counting letters, manipulating, encryption and decryption of txt files.
  *
  * @author Stefan Geisler
- * @version 0.1 (27.08.2018)
+ * @version 0.3 (24.09.2018)
  */
 
 public class TextAnalyserApplication {
