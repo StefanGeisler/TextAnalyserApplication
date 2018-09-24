@@ -25,9 +25,14 @@ public class TextAnalyserUI extends Application {
     private MenuItem    itemSave;
     private MenuItem    itemClear;
     private MenuItem    itemResize;
+    private MenuItem    itemCompare;
     private MenuItem    itemAbout;
 
-    private TextArea    textArea;
+    private TextArea    originalTextArea;
+    private TextArea    cipherTextArea;
+    private TextArea    planeTextArea;
+    private Tab         cipherTab;
+    private Tab         planeTab;
     private TableView   lettersTable;
 
     private Button      buttonAnalyse;
@@ -38,13 +43,12 @@ public class TextAnalyserUI extends Application {
 
     private ToggleGroup         whitespaceToggleGroup;
     private ToggleGroup         punctuationToggleGroup;
+    private ToggleGroup         caseToggleGroup;
+    private CheckBox            alphaNumericCheckBox;
     private ChoiceBox<String>   cipherSelectionBox;
     private ComboBox<String>    keyComboBox;
     private TextField           keyTextField;
 
-    public TextAnalyserUI() {
-
-    }
 
     public Stage getPrimaryStage() {
         return primaryStage;
@@ -58,8 +62,24 @@ public class TextAnalyserUI extends Application {
         return settingsStage;
     }
 
-    public TextArea getTextArea() {
-        return textArea;
+    public TextArea getOriginalTextArea() {
+        return originalTextArea;
+    }
+
+    public TextArea getCipherTextArea() {
+        return cipherTextArea;
+    }
+
+    public TextArea getPlaneTextArea() {
+        return planeTextArea;
+    }
+
+    public Tab getCipherTab() {
+        return cipherTab;
+    }
+
+    public Tab getPlaneTab() {
+        return planeTab;
     }
 
     public TableView getLettersTable() {
@@ -80,6 +100,10 @@ public class TextAnalyserUI extends Application {
 
     public MenuItem getItemResize() {
         return itemResize;
+    }
+
+    public MenuItem getItemCompare() {
+        return itemCompare;
     }
 
     public MenuItem getItemAbout() {
@@ -114,6 +138,14 @@ public class TextAnalyserUI extends Application {
         return punctuationToggleGroup;
     }
 
+    public ToggleGroup getCaseToggleGroup() {
+        return caseToggleGroup;
+    }
+
+    public CheckBox getAlphaNumericCheckBox() {
+        return alphaNumericCheckBox;
+    }
+
     public ChoiceBox<String> getCipherSelectionBox() {
         return cipherSelectionBox;
     }
@@ -146,7 +178,8 @@ public class TextAnalyserUI extends Application {
         itemClear = new MenuItem("Clear");
         menuFile.getItems().addAll(itemOpen, itemSave, itemClear);
         itemResize = new MenuItem("Resize");
-        menuView.getItems().addAll(itemResize);
+        itemCompare = new MenuItem("Compare");
+        menuView.getItems().addAll(itemResize, itemCompare);
         itemAbout = new MenuItem("About");
         menuHelp.getItems().addAll(itemAbout);
 
@@ -155,14 +188,12 @@ public class TextAnalyserUI extends Application {
         itemSave.setAccelerator(KeyCombination.keyCombination("Ctrl+S"));
         itemClear.setAccelerator(KeyCombination.keyCombination("Ctrl+X"));
 
-        itemSave.setDisable(true);  // enable only after modification have been done
         menuBar.getMenus().addAll(menuFile, menuView, menuOptions, menuHelp);
         return menuBar;
     }
 
     /**
-     * Method creates a TabPane with three tabs for the UI.
-     * Primary tab holds a text area.
+     * Method creates a TabPane including three tabs, each with a text area, for the UI.
      *
      * @return TabPane node
      */
@@ -171,20 +202,29 @@ public class TextAnalyserUI extends Application {
         TabPane tabPane = new TabPane();
         Tab mainTab = new Tab("Original");
         mainTab.setClosable(false);
-        Tab cipherTab = new Tab("Cipher Text");
+        this.cipherTab = new Tab("Cipher Text");
         cipherTab.setClosable(false);
-        cipherTab.setDisable(true);
-        Tab planeTab = new Tab("Plane Text");
+        this.planeTab = new Tab("Plane Text");
         planeTab.setClosable(false);
-        planeTab.setDisable(true);
         tabPane.getTabs().addAll(mainTab, cipherTab, planeTab);
 
-        // create TextArea
-        this.textArea = new TextArea();
-        textArea.setPromptText("Enter text, open file or drag&drop...");
-        textArea.setPrefHeight(400);
-        textArea.setWrapText(true);
-        mainTab.setContent(textArea);
+        // create TextArea for original tab
+        this.originalTextArea = new TextArea();
+        originalTextArea.setPromptText("Enter text, open file or drag&drop...");
+        originalTextArea.setPrefHeight(400);
+        originalTextArea.setWrapText(true);
+        mainTab.setContent(originalTextArea);
+
+        // create TextArea for cipher tab
+        this.cipherTextArea = new TextArea();
+        cipherTextArea.setWrapText(true);
+        cipherTab.setContent(cipherTextArea);
+
+        // create TextArea for plane tab
+        this.planeTextArea = new TextArea();
+        planeTextArea.setWrapText(true);
+        planeTab.setContent(planeTextArea);
+
         return tabPane;
     }
 
@@ -252,6 +292,7 @@ public class TextAnalyserUI extends Application {
         this.keyTextField = new TextField();
         keyTextField.setPromptText("Enter keyword");
         keyTextField.setPrefColumnCount(10);
+        keyTextField.setTooltip(new Tooltip("Only latin letters allowed"));
         HBox keyWordHBox = new HBox(5, new Label("Key:"), keyTextField);
         keyWordHBox.setDisable(true);
         cipherVBox.getChildren().add(keyWordHBox);
@@ -308,7 +349,7 @@ public class TextAnalyserUI extends Application {
      * Method initializes a stage with information about cipher methods.
      * The stage will be displayed when the user presses the "Help Button".
      */
-    public void initHelpStage() {
+    private void initHelpStage() {
         // provide basic information text
         Text helpText = new Text(Cryptography.getInformationText());
         helpText.setWrappingWidth(300);
@@ -347,7 +388,7 @@ public class TextAnalyserUI extends Application {
      * Method initializes a stage with options for encryption.
      * The stage will be displayed when the user presses the "Settings Button".
      */
-    public void initSettingsStage() {
+    private void initSettingsStage() {
         GridPane gridPane = new GridPane();
 
         // create a tree view for character handling settings
@@ -388,6 +429,23 @@ public class TextAnalyserUI extends Application {
         punctuationItem.getChildren().addAll(new TreeItem<>(rbIgnorePunctuation), new TreeItem<>(rbRemovePunctuation));
         characterHandlingRoot.getChildren().add(punctuationItem);
 
+        // create mutually exclusive radio buttons for "case sensitivity"
+        this.caseToggleGroup = new ToggleGroup();
+        RadioButton rbKeepCase = new RadioButton("keep case");
+        rbKeepCase.setUserData("keep");
+        rbKeepCase.setToggleGroup(caseToggleGroup);
+        RadioButton rbConvertUpperCase = new RadioButton("convert to uppercase");
+        rbConvertUpperCase.setUserData("convert");
+        rbConvertUpperCase.setToggleGroup(caseToggleGroup);
+        rbConvertUpperCase.setSelected(true);
+        TreeItem CaseItem = new TreeItem("Case shift");
+        CaseItem.getChildren().addAll(new TreeItem<>(rbKeepCase), new TreeItem<>(rbConvertUpperCase));
+        characterHandlingRoot.getChildren().add(CaseItem);
+
+        this.alphaNumericCheckBox = new CheckBox("only alpha-numeric chars");
+        alphaNumericCheckBox.setTooltip(new Tooltip("removes all non alpha-numeric characters before encryption"));
+        characterHandlingRoot.getChildren().add(new TreeItem<>(alphaNumericCheckBox));
+
         // show in a new window
         this.settingsStage = new Stage();
         settingsStage.setTitle("Settings");
@@ -400,7 +458,7 @@ public class TextAnalyserUI extends Application {
      * Main method for starting and initializing the UI.
      */
     @Override
-    public void start(Stage primaryStage) throws Exception {
+    public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
 
         /* define UI-elements */
