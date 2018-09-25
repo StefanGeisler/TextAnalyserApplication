@@ -17,7 +17,9 @@ import javafx.stage.WindowEvent;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +58,7 @@ public class TextAnalyserController {
                 ui.getOriginalTextArea().clear();
                 ui.getCipherTextArea().clear();
                 ui.getPlaneTextArea().clear();
+                ui.getLogTextArea().clear();
                 data.clear();
         });
 
@@ -183,6 +186,7 @@ public class TextAnalyserController {
             // read text from specified file
             if (inputFile != null) {
                 originalText.setValue(TextAnalyserIO.openFile(inputFile));
+                showLog("Imported text from " + inputFile.toString());
                 data.clear();
             }
         }
@@ -206,6 +210,7 @@ public class TextAnalyserController {
             // save "modified text" to specified file
             if (outputFile != null) {
                 TextAnalyserIO.saveFile(cipherText.get(), outputFile);
+                showLog("Saved text to " + outputFile.toString());
             }
         }
     }
@@ -273,6 +278,7 @@ public class TextAnalyserController {
                     File inputFile = db.getFiles().get(0);
                     if (TextAnalyserIO.fileContainsText(inputFile)) {
                         target.setText(TextAnalyserIO.openFile(inputFile));
+                        showLog("Imported text from " + inputFile.toString());
                         success = true;
                     }
                 } catch (IOException e) {
@@ -308,6 +314,7 @@ public class TextAnalyserController {
             }
             // update TableView
             data.setAll(frequencyList);
+            showLog(originalText.getValue().length() + " characters analysed");
         }
     }
 
@@ -366,13 +373,13 @@ public class TextAnalyserController {
                 switch (cipher) {
                     case "Shift Cipher":
                         int shift = ui.getKeyComboBox().getSelectionModel().getSelectedIndex();
-                        System.out.println("caesar [shift: " + shift + "]");
+                        showLog("Caesar (shift: " + shift + ")");
                         cipherText.setValue(Cryptography.shiftCipher(shift, modifiedText));
                         break;
                     case "Polyalphabetic Cipher":
                         String keyword = ui.getKeyTextField().getText().toUpperCase();
                         keyword = keyword.replaceAll("[^A-Z]" , ""); // allow only latin letters in keyword
-                        System.out.println("vigenere [keyword: " + keyword + "]");
+                        showLog("Vigenère (keyword: " + keyword + ")");
                         try {
                             cipherText.setValue(Cryptography.polyalphabeticCipher(keyword, modifiedText));
                         } catch (IllegalArgumentException e) {
@@ -382,6 +389,16 @@ public class TextAnalyserController {
                 }
             }
         }
+    }
+
+    /**
+     * Method shows a logging message with an added time stamp in a specified TextArea of the GUI.
+     *
+     * @param message The logging message.
+     */
+    private void showLog(final String message) {
+        String timeStamp = new SimpleDateFormat("[HH:mm:ss] ").format(new Date());
+        ui.getLogTextArea().appendText(timeStamp + message + "\n");
     }
 
     /**

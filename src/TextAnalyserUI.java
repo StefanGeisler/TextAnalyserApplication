@@ -31,6 +31,7 @@ public class TextAnalyserUI extends Application {
     private TextArea    originalTextArea;
     private TextArea    cipherTextArea;
     private TextArea    planeTextArea;
+    private TextArea    logTextArea;
     private Tab         cipherTab;
     private Tab         planeTab;
     private TableView   lettersTable;
@@ -72,6 +73,10 @@ public class TextAnalyserUI extends Application {
 
     public TextArea getPlaneTextArea() {
         return planeTextArea;
+    }
+
+    public TextArea getLogTextArea() {
+        return logTextArea;
     }
 
     public Tab getCipherTab() {
@@ -493,6 +498,11 @@ public class TextAnalyserUI extends Application {
         buttonAnalyse = new Button("_Analyse Text");
         buttonAnalyse.setMaxWidth(Double.MAX_VALUE);
         leftVBox.getChildren().add(buttonAnalyse);
+
+        // add logging TextArea
+        logTextArea = new TextArea();
+        logTextArea.setEditable(false);
+        leftVBox.getChildren().add(logTextArea);
 
 
         /* CENTER section */
